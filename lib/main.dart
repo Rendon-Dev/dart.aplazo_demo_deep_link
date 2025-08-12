@@ -245,6 +245,7 @@ class WebViewScreen extends StatefulWidget {
 class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -252,6 +253,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     _controller =
         WebViewController()
           ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setBackgroundColor(const Color(0x00000000))
           ..setNavigationDelegate(
             NavigationDelegate(
               onPageStarted: (String url) {
@@ -264,9 +266,63 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   _isLoading = false;
                 });
               },
+              onWebResourceError: (WebResourceError error) {
+                debugPrint('WebView error: ${error.description}');
+                setState(() {
+                  _isLoading = false;
+                  _errorMessage = error.description;
+                });
+              },
+              onNavigationRequest: (NavigationRequest request) {
+                debugPrint('Navigating to: ${request.url}');
+                return NavigationDecision.navigate;
+              },
             ),
           )
-          ..loadRequest(Uri.parse(widget.url));
+          ..setUserAgent(
+            'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+          );
+
+    // Configurar headers adicionales para mejorar compatibilidad
+    _controller.loadRequest(
+      Uri.parse(widget.url),
+      headers: {
+        'Accept':
+            'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'es-MX,es;q=0.8,en;q=0.5,en-US;q=0.3',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+      },
+    );
+  }
+
+  void _retryLoad() {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    _controller.loadRequest(
+      Uri.parse(widget.url),
+      headers: {
+        'Accept':
+            'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'es-MX,es;q=0.8,en;q=0.5,en-US;q=0.3',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+      },
+    );
   }
 
   @override
@@ -278,8 +334,55 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ),
       body: Stack(
         children: [
-          WebViewWidget(controller: _controller),
+          if (_errorMessage == null)
+            WebViewWidget(controller: _controller)
+          else
+            _buildErrorWidget(),
           if (_isLoading) const Center(child: CircularProgressIndicator()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          const Text(
+            'Error al cargar la página',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _errorMessage ?? 'Error desconocido',
+            style: const TextStyle(fontSize: 14, color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: _retryLoad,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Volver'),
+          ),
         ],
       ),
     );
