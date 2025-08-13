@@ -133,3 +133,5 @@ cashi://deeplink?action=openUrl&url=https://www.aplazo.mx
 
 Para preguntas o issues relacionados con este proyecto, por favor contacta al equipo de desarrollo de Aplazo.
 
+
+
