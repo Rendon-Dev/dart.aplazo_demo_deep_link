@@ -37,10 +37,15 @@ class _OpenUrlScreenState extends State<OpenUrlScreen> {
     'com.example.aplazo_demo_deep_link/deeplink',
   );
 
+  // New state variables for deep link parameters
+  Map<String, String> _deepLinkParams = {};
+  String? _deepLinkUrl;
+
   @override
   void initState() {
     super.initState();
     _handleDeepLink();
+    _setupDeepLinkListener();
   }
 
   Future<void> _handleDeepLink() async {
@@ -54,19 +59,26 @@ class _OpenUrlScreenState extends State<OpenUrlScreen> {
     }
   }
 
+  void _setupDeepLinkListener() {
+    platform.setMethodCallHandler((call) async {
+      if (call.method == 'onDeepLink') {
+        final String link = call.arguments as String;
+        _processDeepLink(link);
+      }
+    });
+  }
+
+  void _testDeepLink(String link) {
+    _processDeepLink(link);
+    _showSnackBar('Testing deep link: $link');
+  }
+
   void _processDeepLink(String link) {
     final uri = Uri.parse(link);
-    if (uri.scheme == 'cashi' && uri.host == 'deeplink') {
-      final action = uri.queryParameters['action'];
-      final url = uri.queryParameters['url'];
-
-      if (action == 'openUrl' && url != null) {
-        setState(() {
-          _externalUrlController.text = url;
-        });
-        _showSnackBar('URL cargada desde deeplink: $url');
-      }
-    }
+    setState(() {
+      _deepLinkUrl = link;
+      _deepLinkParams = Map.from(uri.queryParameters);
+    });
   }
 
   Future<void> _openExternalUrl() async {
@@ -120,103 +132,425 @@ class _OpenUrlScreenState extends State<OpenUrlScreen> {
           child: ListView(
             children: [
               const Text(
-                'Open URL',
+                'Deep Link Demo',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 60),
+              const SizedBox(height: 20),
 
-              // Primer input - Open app
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
+              // Deep Link Parameters Section
+              if (_deepLinkUrl != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.link, color: Colors.blue[600]),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Deep Link Detected',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Text(
+                          _deepLinkUrl!,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (_deepLinkParams.isNotEmpty) ...[
+                        const Text(
+                          'Query Parameters:',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...(_deepLinkParams.entries
+                            .map(
+                              (entry) => Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.blue[200]!),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue[100],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        entry.key,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.blue[800],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        entry.value,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                            .toList()),
+                      ] else ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'No query parameters found',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 30),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.grey[600],
+                        size: 48,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'No Deep Link Detected',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Open the app with a deep link to see parameters here',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 30),
+              ],
+
+              const Text(
+                'URL Testing Tools',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // First input - Open app
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Open URL in External App',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
                       controller: _externalUrlController,
+                      maxLines: 3,
+                      minLines: 2,
                       decoration: InputDecoration(
-                        hintText: 'Open app',
+                        hintText: 'Enter URL to open in external app...',
                         hintStyle: TextStyle(color: Colors.grey[500]),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: Colors.grey[50],
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
+                          borderSide: BorderSide(color: Colors.grey[300]!),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.blue[400]!),
+                        ),
+                        contentPadding: const EdgeInsets.all(16),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _openExternalUrl,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Open in External App',
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _openExternalUrl,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[300],
-                      foregroundColor: Colors.black87,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Second input - Open webview
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Open URL in WebView',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
                       ),
                     ),
-                    child: const Text(
-                      'Open app',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _webviewUrlController,
+                      maxLines: 3,
+                      minLines: 2,
+                      decoration: InputDecoration(
+                        hintText: 'Enter URL to open in WebView...',
+                        hintStyle: TextStyle(color: Colors.grey[500]),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.green[400]!),
+                        ),
+                        contentPadding: const EdgeInsets.all(16),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _openWebView,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Open in WebView',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 30),
 
-              // Segundo input - Open webview
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _webviewUrlController,
-                      decoration: InputDecoration(
-                        hintText: 'Open webview',
-                        hintStyle: TextStyle(color: Colors.grey[500]),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
+              // Test Deep Link Button hidden for now
+              Visibility(
+                visible: false, // hide it
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _openWebView,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[300],
-                      foregroundColor: Colors.black87,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Test Deep Links',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Tap a button below to test different deep link scenarios:',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
-                    ),
-                    child: const Text(
-                      'Open webview',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ElevatedButton(
+                            onPressed:
+                                () => _testDeepLink(
+                                  'cashi://deeplink?action=openUrl&url=https://example.com&param1=value1&param2=value2',
+                                ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[100],
+                              foregroundColor: Colors.blue[800],
+                            ),
+                            child: const Text('Test with params'),
+                          ),
+                          ElevatedButton(
+                            onPressed:
+                                () => _testDeepLink(
+                                  'cashi://deeplink?user=john&token=abc123&redirect=home',
+                                ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[100],
+                              foregroundColor: Colors.green[800],
+                            ),
+                            child: const Text('User login'),
+                          ),
+                          ElevatedButton(
+                            onPressed:
+                                () => _testDeepLink(
+                                  'cashi://deeplink?product=shirt&price=29.99&color=blue&size=M',
+                                ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange[100],
+                              foregroundColor: Colors.orange[800],
+                            ),
+                            child: const Text('Product details'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => _testDeepLink('cashi://deeplink'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[100],
+                              foregroundColor: Colors.grey[800],
+                            ),
+                            child: const Text('No params'),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ],
           ),

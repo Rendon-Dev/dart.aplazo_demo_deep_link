@@ -1,137 +1,132 @@
-# Aplazo Demo Deep Link
+# Deep Link Demo App
 
-Una aplicación Flutter demo que demuestra el manejo de deep links y apertura de URLs tanto en aplicaciones externas como en WebView.
+This Flutter application demonstrates how to handle deep links and display all query parameters when a deep link opens the app.
 
-## 📱 Funcionalidades
+## Features
 
-### 1. **Apertura de URLs Externas**
-- Input con hint "Open app"
-- Abre URLs en aplicaciones externas del dispositivo
-- Utiliza `url_launcher` para manejar diferentes tipos de URLs
+- **Deep Link Detection**: Automatically detects when the app is opened via a deep link
+- **Parameter Display**: Shows all query parameters from the deep link as a list of "name: value" pairs
+- **Real-time Updates**: Handles deep links both when the app is launched and when it's already running
+- **Testing Tools**: Built-in test buttons to simulate different deep link scenarios
+- **URL Testing**: Tools to test opening URLs in external apps or WebView
 
-### 2. **WebView Integrado**
-- Input con hint "Open webview"
-- Abre URLs dentro de la aplicación usando WebView
-- Incluye indicador de carga y navegación
+## Deep Link Scheme
 
-### 3. **Manejo de Deep Links**
-- Soporte para deep links con esquema `cashi://`
-- Procesamiento automático de URLs desde deep links
-- Formato soportado: `cashi://deeplink?action=openUrl&url=<URL_A_ABRIR>`
+The app uses the `cashi://` scheme for deep links. The Android manifest is configured to handle this scheme.
 
-## 🛠️ Tecnologías Utilizadas
+### Example Deep Links
 
-- **Flutter**: Framework principal
-- **url_launcher**: Para abrir URLs en aplicaciones externas
-- **webview_flutter**: Para mostrar contenido web dentro de la app
-- **Method Channels**: Comunicación entre Flutter y código nativo Android
-
-## 🔧 Configuración del Proyecto
-
-### Dependencias
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  url_launcher: ^6.2.2
-  webview_flutter: ^4.4.2
-  cupertino_icons: ^1.0.8
+```
+cashi://deeplink?action=openUrl&url=https://example.com&param1=value1&param2=value2
+cashi://deeplink?user=john&token=abc123&redirect=home
+cashi://deeplink?product=shirt&price=29.99&color=blue&size=M
+cashi://deeplink
 ```
 
-### AndroidManifest.xml
-La aplicación está configurada para recibir deep links con el esquema `cashi://`:
+## How to Test
 
-```xml
-<intent-filter android:autoVerify="true">
-    <action android:name="android.intent.action.VIEW" />
-    <category android:name="android.intent.category.DEFAULT" />
-    <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="cashi" />
-</intent-filter>
+### Method 1: Using the App's Test Buttons
+1. Open the app
+2. Scroll down to the "Test Deep Links" section
+3. Tap any of the test buttons to simulate different deep link scenarios
+4. The parameters will be displayed in the "Deep Link Parameters" section
+
+### Method 2: Using ADB (Android Debug Bridge)
+```bash
+# Test with multiple parameters
+adb shell am start -W -a android.intent.action.VIEW -d "cashi://deeplink?action=openUrl&url=https://example.com&param1=value1&param2=value2" com.example.aplazo_demo_deep_link
+
+# Test user login scenario
+adb shell am start -W -a android.intent.action.VIEW -d "cashi://deeplink?user=john&token=abc123&redirect=home" com.example.aplazo_demo_deep_link
+
+# Test product details
+adb shell am start -W -a android.intent.action.VIEW -d "cashi://deeplink?product=shirt&price=29.99&color=blue&size=M" com.example.aplazo_demo_deep_link
+
+# Test with no parameters
+adb shell am start -W -a android.intent.action.VIEW -d "cashi://deeplink" com.example.aplazo_demo_deep_link
 ```
 
-## 🚀 Cómo Usar
+### Method 3: Using a Web Browser
+1. Open a web browser on your device
+2. Navigate to: `cashi://deeplink?action=openUrl&url=https://example.com&param1=value1&param2=value2`
+3. The app should open and display the parameters
 
-### Instalación
-1. Clona el repositorio
-2. Ejecuta `flutter pub get` para instalar dependencias
-3. Ejecuta `flutter run` para iniciar la aplicación
+### Method 4: Using Other Apps
+Any app that can open URLs can trigger the deep link:
+- Email apps
+- Messaging apps
+- Note-taking apps
+- Any app that supports URL schemes
 
-### Uso de la Interfaz
-1. **Open app**: Ingresa una URL y presiona el botón para abrirla externamente
-2. **Open webview**: Ingresa una URL y presiona el botón para abrirla en WebView
+## Implementation Details
 
-### Probar Deep Links
-Utiliza ADB para enviar deep links a la aplicación:
+### Android Configuration
+- **Scheme**: `cashi`
+- **Intent Filter**: Configured in `android/app/src/main/AndroidManifest.xml`
+- **Auto Verify**: Enabled for better deep link handling
+
+### Flutter Implementation
+- **Method Channel**: Used for communication between Flutter and native Android code
+- **State Management**: Tracks deep link URL and parameters in app state
+- **UI Updates**: Automatically updates the UI when deep links are detected
+
+### Key Files
+- `lib/main.dart`: Main Flutter application with deep link handling
+- `android/app/src/main/AndroidManifest.xml`: Android deep link configuration
+- `android/app/src/main/kotlin/com/example/aplazo_demo_deep_link/MainActivity.kt`: Native Android deep link handling
+
+## Parameter Display
+
+When a deep link is detected, the app displays:
+1. **Full Deep Link URL**: The complete URL that triggered the app
+2. **Query Parameters**: A list of all parameters in "name: value" format
+3. **Visual Indicators**: Color-coded parameter names and values for easy reading
+
+## Backward Compatibility
+
+The app maintains backward compatibility with the existing deep link implementation:
+- Still processes `action=openUrl` and `url` parameters for URL opening
+- Preserves existing functionality while adding parameter display
+
+## Troubleshooting
+
+### App Not Opening from Deep Link
+1. Ensure the app is installed
+2. Check that the deep link scheme matches exactly: `cashi://`
+3. Verify the package name in ADB commands matches your app
+
+### Parameters Not Displaying
+1. Check that the deep link contains query parameters (after the `?`)
+2. Ensure the app is properly handling the deep link event
+3. Check the console logs for any error messages
+
+### Testing Issues
+1. Make sure ADB is properly connected to your device
+2. Verify the package name is correct
+3. Try the built-in test buttons first to ensure the app works
+
+## Dependencies
+
+- `flutter`: Core Flutter framework
+- `url_launcher`: For opening URLs in external apps
+- `webview_flutter`: For displaying web content within the app
+
+## Building and Running
 
 ```bash
-adb shell am start -W -a android.intent.action.VIEW \
-  -d "cashi://deeplink?action=openUrl&url=https://google.com" \
-  com.example.aplazo_demo_deep_link
+# Get dependencies
+flutter pub get
+
+# Run the app
+flutter run
+
+# Build for Android
+flutter build apk
 ```
 
-## 📋 Estructura del Deep Link
+## License
 
-### Formato
-```
-cashi://deeplink?action=openUrl&url=<URL_DESTINO>
-```
-
-### Parámetros
-- **scheme**: `cashi` (obligatorio)
-- **host**: `deeplink` (obligatorio)
-- **action**: `openUrl` (define la acción a realizar)
-- **url**: URL de destino que se abrirá
-
-### Ejemplo
-```
-cashi://deeplink?action=openUrl&url=https://www.aplazo.mx
-```
-
-## 🏗️ Arquitectura
-
-### Flutter (Dart)
-- **main.dart**: Interfaz principal con inputs y lógica de navegación
-- **OpenUrlScreen**: Pantalla principal con formularios
-- **WebViewScreen**: Pantalla para mostrar contenido web
-- **Method Channel**: Comunicación con código nativo para deep links
-
-### Android (Kotlin)
-- **MainActivity.kt**: Manejo nativo de deep links y comunicación con Flutter
-- **AndroidManifest.xml**: Configuración de intent filters para deep links
-
-## 🎯 Casos de Uso
-
-1. **Navegación Externa**: Abrir enlaces en el navegador predeterminado o apps específicas
-2. **Contenido Integrado**: Mostrar páginas web dentro de la aplicación
-3. **Deep Link Processing**: Recibir y procesar enlaces desde otras aplicaciones
-4. **URL Sharing**: Facilitar el intercambio de URLs entre aplicaciones
-
-## 🔐 Consideraciones de Seguridad
-
-- Validación de URLs antes de procesarlas
-- Manejo de errores para URLs malformadas
-- Protección contra deep links maliciosos
-
-## 📱 Compatibilidad
-
-- **Plataforma**: Android (orientado específicamente a Android)
-- **Flutter SDK**: ^3.7.2
-- **Versión mínima de Android**: API 21 (Android 5.0)
-
-## 🧪 Pruebas
-
-### Casos de Prueba Recomendados
-1. URLs válidas (HTTP/HTTPS)
-2. URLs malformadas
-3. Deep links válidos
-4. Deep links con parámetros faltantes
-5. Navegación de WebView
-6. Manejo de errores de conexión
-
-## 📞 Soporte
-
-Para preguntas o issues relacionados con este proyecto, por favor contacta al equipo de desarrollo de Aplazo.
+This project is for demonstration purposes.
 
 
 

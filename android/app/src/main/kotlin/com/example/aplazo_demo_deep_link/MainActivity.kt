@@ -8,6 +8,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.aplazo_demo_deep_link/deeplink"
     private var initialLink: String? = null
+    private var methodChannel: MethodChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,14 +26,22 @@ class MainActivity : FlutterActivity() {
         val data = intent?.data
         
         if (Intent.ACTION_VIEW == action && data != null) {
-            initialLink = data.toString()
+            val link = data.toString()
+            if (initialLink == null) {
+                // This is the initial link (app was not running)
+                initialLink = link
+            } else {
+                // This is a new link while app is running
+                methodChannel?.invokeMethod("onDeepLink", link)
+            }
         }
     }
 
     override fun configureFlutterEngine(flutterEngine: io.flutter.embedding.engine.FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 "getInitialLink" -> {
                     result.success(initialLink)
