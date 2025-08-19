@@ -41,6 +41,8 @@ class _OpenUrlScreenState extends State<OpenUrlScreen> {
   void initState() {
     super.initState();
     _handleDeepLink();
+    // Precargar la URL de Aplazo para testing
+    _webviewUrlController.text = '';
   }
 
   Future<void> _handleDeepLink() async {
@@ -246,10 +248,16 @@ class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
   String? _errorMessage;
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
 
   @override
   void initState() {
     super.initState();
+    _initializeWebView();
+  }
+
+  void _initializeWebView() {
     _controller =
         WebViewController()
           ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -257,72 +265,143 @@ class _WebViewScreenState extends State<WebViewScreen> {
           ..setNavigationDelegate(
             NavigationDelegate(
               onPageStarted: (String url) {
+                debugPrint('WebView: Página iniciando carga: $url');
                 setState(() {
                   _isLoading = true;
+                  _errorMessage = null;
                 });
               },
               onPageFinished: (String url) {
+                debugPrint('WebView: Página cargada exitosamente: $url');
                 setState(() {
                   _isLoading = false;
                 });
               },
               onWebResourceError: (WebResourceError error) {
                 debugPrint('WebView error: ${error.description}');
+                debugPrint('Error code: ${error.errorCode}');
+
+                String errorMsg = _getErrorMessage(error);
                 setState(() {
                   _isLoading = false;
-                  _errorMessage = error.description;
+                  _errorMessage = errorMsg;
                 });
               },
               onNavigationRequest: (NavigationRequest request) {
-                debugPrint('Navigating to: ${request.url}');
+                debugPrint('WebView: Navegando a: ${request.url}');
                 return NavigationDecision.navigate;
+              },
+              onUrlChange: (UrlChange change) {
+                debugPrint('WebView: URL cambiada a: ${change.url}');
               },
             ),
           )
           ..setUserAgent(
-            'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
-          );
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          )
+          ..enableZoom(false);
 
-    // Configurar headers adicionales para mejorar compatibilidad
+    _loadUrlWithRetry();
+  }
+
+  String _getErrorMessage(WebResourceError error) {
+    switch (error.errorCode) {
+      case -2: // ERROR_HOST_LOOKUP
+        return 'Error de conexión: No se pudo resolver el host';
+      case -6: // ERROR_CONNECT
+        return 'Error de conexión: No se pudo conectar al servidor';
+      case -8: // ERROR_TIMEOUT
+        return 'Error de conexión: Tiempo de espera agotado';
+      case -106: // ERROR_INTERNET_DISCONNECTED
+        return 'Error de conexión: Sin conexión a internet';
+      case -105: // ERROR_CONNECTION_REFUSED
+        return 'Error de conexión: Conexión rechazada por el servidor';
+      case -7: // ERROR_FAILED
+        return 'Error de conexión: Fallo en la carga de la página';
+      default:
+        return 'Error ${error.errorCode}: ${error.description}';
+    }
+  }
+
+  void _loadUrlWithRetry() {
+    if (_retryCount >= _maxRetries) {
+      setState(() {
+        _errorMessage =
+            'Se agotaron los intentos de conexión. Verifica tu conexión a internet.';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    _retryCount++;
+    debugPrint(
+      'WebView: Intento $_retryCount de $_maxRetries para cargar: ${widget.url}',
+    );
+
+    // Agregar delay progresivo entre reintentos
+    if (_retryCount > 1) {
+      Future.delayed(Duration(seconds: _retryCount), () {
+        if (mounted) {
+          _performLoadRequest();
+        }
+      });
+    } else {
+      _performLoadRequest();
+    }
+  }
+
+  void _performLoadRequest() {
+    // Configurar headers más permisivos y compatibles
     _controller.loadRequest(
       Uri.parse(widget.url),
       headers: {
         'Accept':
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'es-MX,es;q=0.8,en;q=0.5,en-US;q=0.3',
+            'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept-Language': 'es-MX,es;q=0.9,en;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive',
         'Upgrade-Insecure-Requests': '1',
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
+        'DNT': '1',
+        'User-Agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
     );
   }
 
   void _retryLoad() {
+    _loadUrlWithRetry();
+  }
+
+  void _resetAndRetry() {
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+      _retryCount = 0;
     });
-    _controller.loadRequest(
-      Uri.parse(widget.url),
-      headers: {
-        'Accept':
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'es-MX,es;q=0.8,en;q=0.5,en-US;q=0.3',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-      },
-    );
+    _loadUrlWithRetry();
+  }
+
+  void _openInExternalBrowser() async {
+    try {
+      final uri = Uri.parse(widget.url);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      _showSnackBar('Error al abrir en navegador externo: $e');
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -364,17 +443,86 @@ class _WebViewScreenState extends State<WebViewScreen> {
             style: const TextStyle(fontSize: 14, color: Colors.grey),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: _retryLoad,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Reintentar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Column(
+              children: [
+                const Text(
+                  'Sugerencias:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '• Verifica tu conexión a internet\n• Intenta cargar la página nuevamente\n• Si persiste, abre en navegador externo',
+                  style: TextStyle(fontSize: 12, color: Colors.blue),
+                  textAlign: TextAlign.center,
+                ),
+                if (_retryCount > 0) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Intento $_retryCount de $_maxRetries',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.blue.shade700,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton.icon(
+                onPressed: _retryLoad,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _openInExternalBrowser,
+                icon: const Icon(Icons.open_in_browser),
+                label: const Text('Abrir externo'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_retryCount > 0)
+            OutlinedButton.icon(
+              onPressed: _resetAndRetry,
+              icon: const Icon(Icons.restart_alt),
+              label: const Text('Reiniciar y reintentar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.orange,
+                side: const BorderSide(color: Colors.orange),
+              ),
+            ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: () {
