@@ -7,7 +7,7 @@ This Flutter application demonstrates how to handle deep links and display all q
 - **Deep Link Detection**: Automatically detects when the app is opened via a deep link
 - **Parameter Display**: Shows all query parameters from the deep link as a list of "name: value" pairs
 - **Real-time Updates**: Handles deep links both when the app is launched and when it's already running
-- **Testing Tools**: Built-in test buttons to simulate different deep link scenarios
+- **Testing Tools**: Built-in test buttons to simulate different deep link scenarios (Hidden)
 - **URL Testing**: Tools to test opening URLs in external apps or WebView
 
 ## Deep Link Scheme
