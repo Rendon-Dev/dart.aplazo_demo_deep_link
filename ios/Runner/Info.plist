@@ -38,6 +38,16 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Camera and microphone permissions for WebView -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to capture photos and videos in web applications for identity verification and document scanning.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs microphone access to record audio in web applications for voice communication and audio capture.</string>
+	<!-- Additional iOS permissions for media access -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app may need access to photo library for uploading images in web applications.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app may need to save photos to your photo library from web applications.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
