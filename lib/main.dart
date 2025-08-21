@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(const MyApp());
@@ -593,7 +594,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   void _initializeWebView() {
     _controller =
-        WebViewController()
+        WebViewController(
+            onPermissionRequest: (WebViewPermissionRequest request) {
+              debugPrint('WebView: Solicitud de permiso: ${request.types}');
+              request.grant();
+            },
+          )
           ..setJavaScriptMode(JavaScriptMode.unrestricted)
           ..setBackgroundColor(const Color(0x00000000))
           ..setNavigationDelegate(
@@ -635,7 +641,38 @@ class _WebViewScreenState extends State<WebViewScreen> {
           )
           ..enableZoom(false);
 
+    // Request camera and microphone permissions for WebView
+    _requestCameraMicrophonePermissions();
+
     _loadUrlWithRetry();
+  }
+
+  Future<void> _requestCameraMicrophonePermissions() async {
+    try {
+      // Request camera permission
+      var cameraStatus = await Permission.camera.status;
+      if (cameraStatus.isDenied) {
+        cameraStatus = await Permission.camera.request();
+      }
+
+      // Request microphone permission
+      var microphoneStatus = await Permission.microphone.status;
+      if (microphoneStatus.isDenied) {
+        microphoneStatus = await Permission.microphone.request();
+      }
+
+      debugPrint('Camera permission: $cameraStatus');
+      debugPrint('Microphone permission: $microphoneStatus');
+
+      if (cameraStatus.isPermanentlyDenied ||
+          microphoneStatus.isPermanentlyDenied) {
+        _showSnackBar(
+          'Camera and microphone permissions are required for this feature. Please enable them in Settings.',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error requesting permissions: $e');
+    }
   }
 
   String _getErrorMessage(WebResourceError error) {
